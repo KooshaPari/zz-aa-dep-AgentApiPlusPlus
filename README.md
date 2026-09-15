@@ -1,3 +1,9 @@
+# zz-aa-dep
+
+Owned hard fork dependency for a project/product. zz prefix for readability/ordering. Code preserved.
+
+---
+
 # zz-agentapi-plusplus (AAPI++)\n\nPassive development. Agents touch as needed. Do NOT pause, delete, archive, or merge.\n\n---\n\n# agentapi-plusplus (MIGRATED)
 
 > **Migrated to [substrate](https://github.com/KooshaPari/substrate).**
