@@ -74,13 +74,26 @@ async function hasValidAccessJwt(jwt: string): Promise<boolean> {
   } catch {
     return false;
   }
+  // JSON.parse can yield null or a scalar (e.g. a crafted "null" segment); without
+  // this guard the property reads below would throw and surface a 500 instead of 401.
+  if (!header || typeof header !== 'object' || !payload || typeof payload !== 'object') {
+    return false;
+  }
   if (header.alg !== 'RS256' || !header.kid) return false;
   if (payload.iss !== ISSUER) return false;
   const auds = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
   if (!auds.some((a) => a && TRUSTED_AUDS.includes(a))) return false;
   if (typeof payload.exp !== 'number' || payload.exp < Date.now() / 1000) return false;
   try {
-    const key = (await getKeys()).get(header.kid);
+    let keys = await getKeys();
+    let key = keys.get(header.kid);
+    if (!key && Date.now() - keysFetchedAt > 60_000) {
+      // Unknown kid after a key rotation: drop the cached JWKS and refetch once
+      // (guarded so a flood of junk kids cannot trigger a fetch storm).
+      keysPromise = null;
+      keys = await getKeys();
+      key = keys.get(header.kid);
+    }
     if (!key) return false;
     const signed = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
     return await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, b64url(parts[2]), signed);
